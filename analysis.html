@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>통합 분석</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="dot"></div>
+      <div>
+        <div class="title">통합 분석 (새 창)</div>
+        <div class="sub">6구간 카드(15m~2W) · 코인: <b id="sym">-</b></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button id="btnDiag" class="btn btn-ghost">자가진단</button>
+    </div>
+  </header>
+
+  <main class="analysis-wrap">
+    <section class="panel">
+      <div class="row between">
+        <div id="tfBadges" class="badges"></div>
+        <div id="status" class="muted">대기…</div>
+      </div>
+      <div id="bestBox" class="bestbox"></div>
+    </section>
+
+    <section id="root" class="analysis-grid"></section>
+  </main>
+
+  <!-- 자가진단 오버레이 (index.html과 동일) -->
+  <div id="diagOverlay" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="overlay-card">
+      <div class="overlay-head">
+        <div class="overlay-title">자가진단 / 오류 표시</div>
+        <div class="overlay-actions">
+          <button id="btnCopyDiag" class="btn btn-ghost">복사</button>
+          <button id="btnCloseDiag" class="btn btn-primary">닫기</button>
+        </div>
+      </div>
+
+      <div class="overlay-body">
+        <div class="diag-grid">
+          <div class="diag-item">
+            <div class="k">마지막 실행 기능</div>
+            <div id="dgLastAction" class="v">-</div>
+          </div>
+          <div class="diag-item">
+            <div class="k">WS 상태</div>
+            <div id="dgWs" class="v">미연동</div>
+          </div>
+          <div class="diag-item">
+            <div class="k">선택 코인/TF</div>
+            <div id="dgSel" class="v">-</div>
+          </div>
+          <div class="diag-item">
+            <div class="k">헬스체크</div>
+            <div id="dgHealth" class="v">-</div>
+          </div>
+        </div>
+
+        <pre id="dgErrorBox" class="errorbox">오류 없음</pre>
+
+        <div class="toggles">
+          <label class="toggle">
+            <input id="dbgToggle" type="checkbox" checked />
+            <span>디버그 ON</span>
+          </label>
+          <div class="hint">OFF: 간단 / ON: 상세(스택) 표시</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    // app.js가 analysis.html이면 자동으로 initAnalysisPage() 실행함
+    // 자가진단 버튼은 여기서만 간단 연결
+    document.getElementById('btnDiag')?.addEventListener('click', () => {
+      try{ showDiag(); }catch(e){ document.getElementById('diagOverlay')?.classList.remove('hidden'); }
+    });
+  </script>
+</body>
+</html>

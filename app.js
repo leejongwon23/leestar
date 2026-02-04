@@ -10,7 +10,9 @@
   const APP_VERSION = 'v3.3-step10-fixed3';
   const APP_BUILD = '2026-02-04 07:52:08';
 
-  const $ = (sel) => document.querySelector(sel);
+    const IS_ANALYSIS_PAGE = /\/analysis\.html(\?|$)/.test(location.pathname + location.search);
+
+const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
   // ---- Fixed rules (from your decision) ----
@@ -148,6 +150,11 @@
 
   // ---- UI init ----
   document.addEventListener('DOMContentLoaded', async () => {
+    if(IS_ANALYSIS_PAGE){
+      initAnalysisPage();
+      return;
+    }
+
     bindNetworkBanner();
     bindTop();
     renderCoinList(COINS_30);
@@ -842,52 +849,69 @@
   }
 
   // ---------------- Integrated analysis window (Step 3) ----------------
-  async function openIntegratedAnalysis(){
-    const symbol = state.symbol;
+  // -- Integrated analysis window (Step 3) ----------------
+async function openIntegratedAnalysis(){
+  const symbol = state.symbol;
+  // Mobile-safe: open a real page (analysis.html) instead of document.write into about:blank
+  const url = `analysis.html?symbol=${encodeURIComponent(symbol)}`;
+  const w = window.open(url, '_blank', 'noopener,noreferrer');
+  if(!w){
+    setDiagError('팝업이 차단되었습니다. 브라우저에서 팝업 허용 후 다시 시도해 주세요.', 'Popup blocked');
+    showDiag();
+    return;
+  }
+}
 
-    const w = window.open('', '_blank', 'noopener,noreferrer');
-    if(!w){
-      setDiagError('팝업이 차단되었습니다. 브라우저에서 팝업 허용 후 다시 시도해 주세요.', 'Popup blocked');
-      showDiag();
-      return;
-    }
+// Entry for analysis.html
+async function initAnalysisPage(){
+  try{
 
-    // base HTML skeleton
-    w.document.write(getAnalysisHTMLSkeleton(symbol));
-    w.document.close();
+// minimal bindings for diag overlay buttons (analysis page)
+const _c = document.getElementById('btnCloseDiag');
+if(_c) _c.addEventListener('click', hideDiag);
+const _cp = document.getElementById('btnCopyDiag');
+if(_cp) _cp.addEventListener('click', copyDiag);
+const _dbg = document.getElementById('dbgToggle');
+if(_dbg) _dbg.addEventListener('change', (e)=>{ state.diag.debug = !!e.target.checked; updateDiagUI(); });
 
-    // run analysis in main window (avoids duplicating code in popup)
-    const root = () => w.document.getElementById('root');
-    const setStatus = (txt) => {
-      const el = w.document.getElementById('status');
-      if(el) el.textContent = txt;
-    };
+    const qs = new URLSearchParams(location.search || '');
+    const symbol = (qs.get('symbol') || 'BTCUSDT').toUpperCase();
+    // header
+    const symEl = document.getElementById('sym');
+    if(symEl) symEl.textContent = symbol;
+    const tfBadgesEl = document.getElementById('tfBadges');
+    if(tfBadgesEl) tfBadgesEl.innerHTML = TF_SET.map(tf => `<span class="pill">${escapeHtml(tf.toUpperCase())}</span>`).join('');
+    const statusEl = document.getElementById('status');
+    if(statusEl) statusEl.textContent = '데이터 불러오는 중…';
 
-    setStatus('데이터 불러오는 중…');
-
-    // Fetch & compute sequentially to be gentle on browser / API
     const results = [];
     for(let i=0;i<TF_SET.length;i++){
       const tf = TF_SET[i];
-      setStatus(`[${i+1}/6] ${tf.toUpperCase()} 분석 중…`);
+      if(statusEl) statusEl.textContent = `[${i+1}/6] ${tf.toUpperCase()} 분석 중…`;
       const r = await analyzeOneTF(symbol, tf);
       results.push(r);
-      // render progressively
-      renderAnalysisCard(w, r);
+      renderAnalysisCard(window, r);
     }
 
-    // BEST selection (recent performance composite)
     const best = pickBest(results);
     if(best){
-      markBestCard(w, best.tf);
-      const bestEl = w.document.getElementById('bestBox');
+      markBestCard(window, best.tf);
+      const bestEl = document.getElementById('bestBox');
       if(bestEl){
         bestEl.innerHTML = `BEST: <b>${escapeHtml(best.tf.toUpperCase())}</b> · 승률 ${formatNum(best.bt.winRate,1)}% · 기대값 ${formatNum(best.bt.expectancy,3)}% · MDD ${formatNum(best.bt.mdd,1)}%`;
       }
     }
-
-    setStatus('완료 ✅ (각 카드에서 “이 전략 추적” 클릭 가능)');
+    if(statusEl) statusEl.textContent = '완료 ✅ (각 카드에서 “이 전략 추적” 클릭 가능)';
+  }catch(err){
+    // Use built-in diag overlay if present (analysis page has it too)
+    try{
+      setDiagError('통합 분석 페이지 초기화 실패', String(err && err.stack ? err.stack : err));
+      showDiag();
+    }catch(_e){}
   }
+}
+
+
 
   function getAnalysisHTMLSkeleton(symbol){
     const tfBadges = TF_SET.map(tf => `<span class="pill">${tf.toUpperCase()}</span>`).join('');
