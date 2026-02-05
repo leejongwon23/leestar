@@ -3,226 +3,85 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>코인 분석·예측 (v3.3)</title>
-
+  <title>코인 분석·예측 (v3.3 FINAL)</title>
   <link rel="stylesheet" href="./styles.css" />
-
-  <!-- Lightweight Charts (경량 캔들 차트) -->
   <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
 </head>
 <body>
-  <div id="offlineBanner" class="offline hidden">네트워크가 불안정합니다. 데이터가 멈출 수 있어요.</div>
-  <!-- 상단 바 -->
-  <header class="topbar">
-    <div class="brand">
-      <div class="dot"></div>
+<header class="topbar">
+  <div class="brand">
+    <div class="dot"></div>
+    <div>
+      <div class="title">코인 분석·예측 웹앱</div>
+      <div class="subtitle">v3.3 FINAL · 신뢰필터 승률 · 다중 추적</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <button id="btnTrackStatus" class="btn btn-ghost">추적 현황</button>
+    <button id="btnDiag" class="btn btn-ghost">자가진단</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="sidebar-title">유망 코인 30</div>
+      <div class="sidebar-desc">Binance USDT Perp</div>
+    </div>
+    <div id="coinList" class="coinlist"></div>
+  </aside>
+
+  <section class="content">
+    <div class="content-head">
       <div>
-        <div class="title">코인 분석·예측 웹앱</div>
-        <div class="subtitle">v3.3 · 브라우저 전용 · 통합 분석(새 창) · 다중 추적 · 자가진단</div>
+        <div class="label">선택 코인</div>
+        <div id="selectedSymbol" class="value">BTCUSDT</div>
       </div>
+      <button id="btnAnalyze" class="btn btn-primary">통합 분석</button>
     </div>
 
-    <div class="topbar-right">
-      <button id="btnDiag" class="btn btn-ghost" title="오류/상태 보기">자가진단</button>
+    <div class="chart-wrap">
+      <div id="chart" class="chart"></div>
     </div>
-  </header>
 
-  <!-- 메인 레이아웃 -->
-  <main class="layout">
-    <!-- 왼쪽: 코인 목록 -->
-    <aside class="sidebar">
-      <div class="sidebar-head">
-        <div class="sidebar-title">유망 코인 30 (Binance USDT Perp)</div>
-        <div class="sidebar-desc">실시간 가격/변동률은 2단계에서 WS로 연결</div>
+    <!-- 누적 통계 패널 -->
+    <div class="stats-panel">
+      <div class="stat"><span>총 횟수</span><b id="stTotal">0</b></div>
+      <div class="stat ok"><span>성공</span><b id="stWin">0</b></div>
+      <div class="stat bad"><span>실패</span><b id="stLose">0</b></div>
+      <div class="stat"><span>신뢰 승률</span><b id="stRate">0%</b></div>
+    </div>
+  </section>
+</main>
+
+<!-- 통합 분석 풀모달 -->
+<div id="analysisModal" class="overlay hidden">
+  <div class="overlay-card full">
+    <div class="overlay-head">
+      <div class="overlay-title">통합 분석</div>
+      <div>
+        <button id="btnCloseAnalysis" class="btn btn-primary">닫기</button>
       </div>
-
-      <div class="search">
-        <input id="coinSearch" type="text" placeholder="코인 검색 (예: BTC, ETH)" autocomplete="off"/>
-      </div>
-
-      <div id="coinList" class="coinlist" aria-label="코인 목록"></div>
-    </aside>
-
-    <!-- 오른쪽: 차트 + 버튼 + 추적 -->
-    <section class="content">
-      <!-- 상단: 선택 코인 + 타임프레임 + 통합 분석 -->
-      <div class="content-head">
-        <div class="left-pack">
-          <div class="selected">
-            <div class="label">선택 코인</div>
-            <div id="selectedSymbol" class="value">BTCUSDT</div>
-          </div>
-
-          <div class="tf">
-            <div class="label">타임프레임</div>
-            <div class="tf-buttons" role="group" aria-label="타임프레임 선택">
-              <button class="tf-btn is-active" data-tf="15m">15m</button>
-              <button class="tf-btn" data-tf="1h">1h</button>
-              <button class="tf-btn" data-tf="4h">4h</button>
-              <button class="tf-btn" data-tf="1d">1D</button>
-              <button class="tf-btn" data-tf="1w">1W</button>
-              <button class="tf-btn" data-tf="2w">2W</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="right-pack">
-          <button id="btnAnalyze" class="btn btn-primary">
-            통합 분석(새 창)
-          </button>
-          <div class="hint">
-            새 창에 6구간 카드(15m~2W) 결과를 한 번에 표시 (3단계에서 구현)
-          </div>
-        </div>
-      </div>
-
-      <!-- 차트 영역 -->
-      
-      <div class="draw-toolbar" id="drawToolbar">
-        <button data-tool="none" class="btn btn-ghost is-active">포인터</button>
-        <button data-tool="line" class="btn btn-ghost">추세선</button>
-        <button data-tool="rect" class="btn btn-ghost">박스</button>
-        <span class="draw-hint">차트 위에서 드래그</span>
-      </div>
-      <div class="chart-wrap">
-        
-        <div id="chart" class="chart"><canvas id="drawCanvas" class="draw-canvas"></canvas></div>
-        <div class="chart-footer">
-          <div class="mini">
-            <span class="pill">캔들 + 거래량</span>
-            <span class="pill">작도(추세선/박스)는 4단계에서 추가</span>
-          </div>
-          <div class="mini right">
-            <span id="connStatus" class="pill warn">데이터 미연동</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- 추적 패널 (다중추적 자리) -->
-      <div class="track-panel">
-        <div class="track-head">
-          <div>
-            <div class="track-title">추적 목록 (다중 추적)</div>
-            <div class="track-desc">여러 전략을 동시에 추적 · 종료 시 통계 누적 (4~5단계에서 구현)</div>
-          </div>
-          <div class="track-actions">
-  <div class="cost-settings" title="거래비용(%) 설정">
-    <label>수수료 <input id="costFee" type="number" step="0.01" min="0" /></label>
-    <label>슬리피지 <input id="costSlip" type="number" step="0.01" min="0" /></label>
-    <label>스프레드 <input id="costSpr" type="number" step="0.01" min="0" /></label>
-    <button id="btnSaveCost" class="btn btn-ghost">저장</button>
-  </div>
-
-            <button id="btnStopAll" class="btn btn-ghost" disabled>전체 중지</button>
-            <button id="btnResetAllTop" class="btn btn-ghost">전체 초기화</button>
-          </div>
-        </div>
-
-        <div id="trackList" class="track-list">
-          <div class="empty">
-            아직 추적이 없습니다. (통합 분석 새 창에서 “이 전략 추적” 클릭 시 추가됨)
-          </div>
-        </div>
-
-        <div class="stats">
-          <div class="stat">
-            <div class="k">총 횟수</div><div id="stTotal" class="v">0</div>
-          </div>
-          <div class="stat">
-            <div class="k">성공률</div><div id="stWinRate" class="v">0%</div>
-          </div>
-          <div class="stat">
-            <div class="k">누적 손익</div><div id="stPnl" class="v">0%</div>
-          </div>
-          <div class="stat">
-            <div class="k">기대값</div><div id="stExp" class="v">0</div>
-          </div>
-          <div class="stat">
-            <div class="k">MDD</div><div id="stMdd" class="v">0%</div>
-          </div>
-        </div>
-
-        <div class="recent">
-          <div class="recent-head">
-            <div class="recent-title">최근 10회 결과</div>
-            <div class="recent-actions">
-              <button id="btnResetTracks" class="btn btn-ghost">추적 초기화</button>
-              <button id="btnResetDraw" class="btn btn-ghost">작도 초기화</button>
-              <button id="btnResetSettings" class="btn btn-ghost">설정 초기화</button>
-              <button id="btnResetAll" class="btn btn-ghost">전체 초기화</button>
-
-              <button id="btnResetStats" class="btn btn-ghost">통계 초기화</button>
-            </div>
-          </div>
-          <div id="recentList" class="recent-list">
-            <div class="empty">아직 종료된 결과가 없습니다.</div>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-
-  <!-- 통합 분석 모달 (동일 브라우저 내) -->
-  <div id="analysisModal" class="overlay hidden" role="dialog" aria-modal="true">
-    <div class="overlay-card analysis-modal-card">
-      <div class="overlay-head">
-        <div class="overlay-title">통합 분석 (모달)</div>
-        <div class="overlay-actions">
-          <button id="btnReloadAnalysis" class="btn btn-ghost">새로고침</button>
-          <button id="btnCloseAnalysis" class="btn btn-primary">닫기</button>
-        </div>
-      </div>
-      <div class="overlay-body analysis-modal-body">
-        <iframe id="analysisFrame" title="통합 분석" class="analysis-iframe" src="about:blank"></iframe>
-      </div>
+    </div>
+    <div class="overlay-body no-scroll">
+      <iframe id="analysisFrame" class="analysis-iframe"></iframe>
     </div>
   </div>
+</div>
 
-  <!-- 자가진단 오버레이 -->
-  <div id="diagOverlay" class="overlay hidden" role="dialog" aria-modal="true">
-    <div class="overlay-card">
-      <div class="overlay-head">
-        <div class="overlay-title">자가진단 / 오류 표시</div>
-        <div class="overlay-actions">
-          <button id="btnCopyDiag" class="btn btn-ghost">복사</button>
-          <button id="btnCloseDiag" class="btn btn-primary">닫기</button>
-        </div>
-      </div>
-
-      <div class="overlay-body">
-        <div class="diag-grid">
-          <div class="diag-item">
-            <div class="k">마지막 실행 기능</div>
-            <div id="dgLastAction" class="v">-</div>
-          </div>
-          <div class="diag-item">
-            <div class="k">WS 상태</div>
-            <div id="dgWs" class="v">미연동</div>
-          </div>
-          <div class="diag-item">
-            <div class="k">선택 코인/TF</div>
-            <div id="dgSel" class="v">BTCUSDT / 15m</div>
-          </div>
-          <div class="diag-item">
-            <div class="k">헬스체크</div>
-            <div id="dgHealth" class="v">UI OK · 데이터 미연동</div>
-          </div>
-        </div>
-
-        <pre id="dgErrorBox" class="errorbox">오류 없음</pre>
-
-        <div class="toggles">
-          <label class="toggle">
-            <input id="dbgToggle" type="checkbox" />
-            <span>디버그 ON</span>
-          </label>
-          <div class="toggle-hint">OFF: 간단 / ON: 상세(스택) 표시</div>
-        </div>
-      </div>
+<!-- 추적 현황 모달 -->
+<div id="trackModal" class="overlay hidden">
+  <div class="overlay-card">
+    <div class="overlay-head">
+      <div class="overlay-title">추적 현황</div>
+      <button id="btnCloseTrack" class="btn btn-primary">닫기</button>
+    </div>
+    <div class="overlay-body">
+      <div id="trackStatusList"></div>
     </div>
   </div>
+</div>
 
-  <script src="./app.js?v=20260205_2"></script>
+<script src="./app.js"></script>
 </body>
 </html>
