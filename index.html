@@ -18,12 +18,13 @@
       <div class="dot"></div>
       <div>
         <div class="title">코인 분석·예측 웹앱</div>
-        <div class="subtitle">v3.3 · 브라우저 전용 · 통합 분석(새 창) · 다중 추적 · 자가진단</div>
+        <div class="subtitle">v3.3 · 브라우저 전용 · 통합 분석(새 창) · 다중 추적 · 자가진단 <span id="verInfo" class="verinfo"></span></div>
       </div>
     </div>
 
     <div class="topbar-right">
       <button id="btnDiag" class="btn btn-ghost" title="오류/상태 보기">자가진단</button>
+      <button id="btnOpenStats" class="btn btn-ghost" title="누적 통계 보기">누적 통계</button>
     </div>
   </header>
 
@@ -55,7 +56,7 @@
 
           <div class="tf">
             <div class="label">타임프레임</div>
-            <div class="tf-buttons" role="group" aria-label="타임프레임 선택">
+            <div class="tf-buttons" id="tfBadges" role="group" aria-label="타임프레임 선택">
               <button class="tf-btn is-active" data-tf="15m">15m</button>
               <button class="tf-btn" data-tf="1h">1h</button>
               <button class="tf-btn" data-tf="4h">4h</button>

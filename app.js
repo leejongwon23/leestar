@@ -978,9 +978,9 @@ if(_dbg) _dbg.addEventListener('change', (e)=>{ state.diag.debug = !!e.target.ch
     const qs = new URLSearchParams(location.search || '');
     const symbol = (qs.get('symbol') || 'BTCUSDT').toUpperCase();
     // header
-    const symEl = document.getElementById('sym');
+    const symEl = document.getElementById('sym') || document.getElementById('selectedSymbol');
     if(symEl) symEl.textContent = symbol;
-    const tfBadgesEl = document.getElementById('tfBadges');
+    const tfBadgesEl = document.getElementById('tfBadges') || document.querySelector('.tf-buttons');
     if(tfBadgesEl) tfBadgesEl.innerHTML = TF_SET.map(tf => `<span class="pill">${escapeHtml(tf.toUpperCase())}</span>`).join('');
     const statusEl = document.getElementById('status');
     if(statusEl) statusEl.textContent = '데이터 불러오는 중…';
