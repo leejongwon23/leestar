@@ -1222,6 +1222,16 @@ async function analyzeOneTF(symbol, tf){
       return makeEmptyResult(symbol, tf, '데이터 부족');
     }
 
+    // 1.5) ohlcv -> candles (backtestWFO는 candles 스키마 필요)
+    const candles = ohlcv.map(k => ({
+      t: k.openTime,
+      o: +k.open,
+      h: +k.high,
+      l: +k.low,
+      c: +k.close,
+      v: +k.volume
+    }));
+
     // 2) arrays
     const closes = ohlcv.map(x => x.close);
     const highs  = ohlcv.map(x => x.high);
