@@ -185,6 +185,11 @@ const $ = (sel) => document.querySelector(sel);
   // ---------------- UI bindings ----------------
   function bindTop(){
     $('#btnDiag').addEventListener('click', () => { setLastAction('자가진단 열기'); showDiag(); });
+    // cumulative stats modal
+    document.getElementById('btnOpenStats')?.addEventListener('click', () => {
+      setLastAction('누적 통계 열기');
+      openStatsModal();
+    });
     $('#btnCloseDiag').addEventListener('click', hideDiag);
     $('#btnCopyDiag').addEventListener('click', copyDiag);
     $('#dbgToggle').addEventListener('change', (e) => {
@@ -213,10 +218,26 @@ const $ = (sel) => document.querySelector(sel);
       setLastAction('통합 분석 새로고침');
       openAnalysisModal(state.symbol);
     });
+
+    // stats modal controls
+    document.getElementById('btnCloseStats')?.addEventListener('click', closeStatsModal);
+    document.getElementById('btnResetStatsAll')?.addEventListener('click', () => {
+      setLastAction('통계 초기화(모달)');
+      stats = { trades: [] };
+      saveStats();
+      renderStats();
+      renderStatsModal();
+    });
+    document.getElementById('btnExportStats')?.addEventListener('click', () => {
+      setLastAction('통계 CSV 복사');
+      copyStatsCSV();
+    });
     document.addEventListener('keydown', (e)=>{
       if(e.key === 'Escape'){
         const m = document.getElementById('analysisModal');
         if(m && !m.classList.contains('hidden')) closeAnalysisModal();
+        const s = document.getElementById('statsModal');
+        if(s && !s.classList.contains('hidden')) closeStatsModal();
       }
     });
 
@@ -916,10 +937,15 @@ async function openIntegratedAnalysis(){
 function openAnalysisModal(symbol){
   const modal = document.getElementById('analysisModal');
   const frame = document.getElementById('analysisFrame');
+  const meta = document.getElementById('analysisMeta');
   if(!modal || !frame){
     // fallback: if modal DOM missing, go to analysis page
     window.location.href = `analysis.html?symbol=${encodeURIComponent(symbol)}`;
     return;
+  }
+  if(meta){
+    const tf = state.tf ? state.tf.toUpperCase() : '-';
+    meta.textContent = `코인: ${symbol} · 현재 TF: ${tf} · 6구간(15m~2W) 결과를 아래에서 스크롤로 확인`;
   }
   // cache-bust to avoid stale content
   frame.src = `analysis.html?symbol=${encodeURIComponent(symbol)}&t=${Date.now()}`;
@@ -1176,7 +1202,7 @@ if(_dbg) _dbg.addEventListener('change', (e)=>{ state.diag.debug = !!e.target.ch
 
   
   // ---------------- Step 10: WFO (rolling) backtest ----------------
-  function backtestWFO(candles, dir, tpPx, slPx, atrPx, entryPx){
+  function backtestWFO(candles, dir, atrSeries){
     // This is a walk-forward simulation: signal and trade evaluation use only past bars.
     // Additionally, we report rolling folds performance to avoid "one big number" bias.
     const costPct = costPctNow();
@@ -1188,22 +1214,31 @@ if(_dbg) _dbg.addEventListener('change', (e)=>{ state.diag.debug = !!e.target.ch
     // Trade rule: open at close(i) and exit by TP/SL within next bar range; else exit at close(i+1).
     const rets = [];
     const times = [];
-    for(let i=20;i<n-2;i++){ // warmup for indicators already applied outside; keep safe
+    for(let i=20;i<n-2;i++){ // warmup
       const e = candles[i].c;
       const next = candles[i+1];
-      // build dynamic TP/SL around entry using ATR-based distance (same as analysis)
-      const tp = (dir==='LONG') ? e + atrPx*2.0 : e - atrPx*2.0;
-      const sl = (dir==='LONG') ? e - atrPx*1.2 : e + atrPx*1.2;
+      // per-bar ATR (fallback: 0)
+      const a = (Array.isArray(atrSeries) ? (atrSeries[i] || 0) : 0);
+      // build TP/SL around entry using the same multipliers as main analysis
+      const tp = (dir==='LONG') ? e + a*TP_ATR_MULT : e - a*TP_ATR_MULT;
+      const sl = (dir==='LONG') ? e - a*SL_ATR_MULT : e + a*SL_ATR_MULT;
 
       let exit = next.c;
       let outcome = 'TIME';
 
+      // conservative: if both TP/SL within same bar => count SL
       if(dir==='LONG'){
-        if(next.h >= tp){ exit = tp; outcome='TP'; }
-        else if(next.l <= sl){ exit = sl; outcome='SL'; }
+        const hitTP = next.h >= tp;
+        const hitSL = next.l <= sl;
+        if(hitSL && hitTP){ exit = sl; outcome='SL'; }
+        else if(hitTP){ exit = tp; outcome='TP'; }
+        else if(hitSL){ exit = sl; outcome='SL'; }
       }else{
-        if(next.l <= tp){ exit = tp; outcome='TP'; }
-        else if(next.h >= sl){ exit = sl; outcome='SL'; }
+        const hitTP = next.l <= tp;
+        const hitSL = next.h >= sl;
+        if(hitSL && hitTP){ exit = sl; outcome='SL'; }
+        else if(hitTP){ exit = tp; outcome='TP'; }
+        else if(hitSL){ exit = sl; outcome='SL'; }
       }
 
       const gross = (dir==='LONG') ? (exit-e)/e*100 : (e-exit)/e*100;
@@ -1315,7 +1350,8 @@ async function analyzeOneTF(symbol, tf){
     const { tp, sl, tpPct, slPct } = calcTpSl(entry, atrNow, dir);
 
     // 7) backtest
-    const bt = backtestWFO(candles, dir, tp, sl, atr, entry);
+    // backtest uses per-bar ATR series (이전 버전 버그: atr 함수가 들어가서 NaN이 될 수 있었음)
+    const bt = backtestWFO(candles, dir, atr14);
 
     // 8) 신뢰도 경고(강화)
     const warns = [];
@@ -2125,6 +2161,203 @@ function bindCostSettings(){
         </div>
       `;
     }).join('');
+  }
+
+  // ---------------- Cumulative Stats Modal (new) ----------------
+  function openStatsModal(){
+    const modal = document.getElementById('statsModal');
+    if(!modal) return;
+    renderStatsModal();
+    modal.classList.remove('hidden');
+    // close on backdrop click
+    modal.addEventListener('click', (e)=>{
+      if(e.target === modal) closeStatsModal();
+    }, { once:true });
+  }
+
+  function closeStatsModal(){
+    const modal = document.getElementById('statsModal');
+    if(modal) modal.classList.add('hidden');
+  }
+
+  function renderStatsModal(){
+    const trades = stats.trades || [];
+    const meta = document.getElementById('statsMeta');
+    if(meta){
+      const ts = new Date().toLocaleString();
+      meta.textContent = `총 ${trades.length}회 · ${ts}`;
+    }
+
+    // global summary
+    const total = trades.length;
+    const wins = trades.filter(t => t.retPct > 0).length;
+    const winRate = total ? (wins/total*100) : 0;
+    const avgRet = total ? (trades.reduce((a,t)=>a+t.retPct,0)/total) : 0;
+    const avgWin = wins ? (trades.filter(t=>t.retPct>0).reduce((a,t)=>a+t.retPct,0)/wins) : 0;
+    const losses = total - wins;
+    const avgLoss = losses ? (trades.filter(t=>t.retPct<=0).reduce((a,t)=>a+t.retPct,0)/losses) : 0;
+
+    // equity & MDD
+    let eq=1.0, peak=1.0, mdd=0;
+    for(const t of trades){
+      eq *= (1 + (t.retPct/100));
+      if(eq>peak) peak=eq;
+      const dd=(peak-eq)/peak*100;
+      if(dd>mdd) mdd=dd;
+    }
+    const pnl = (eq-1)*100;
+
+    const sumEl = document.getElementById('statsSummary');
+    if(sumEl){
+      sumEl.innerHTML = `
+        <div><b>총 횟수</b>: <span class="stats-pill">${total}</span> · <b>성공</b>: <span class="stats-pill">${wins}</span> · <b>실패</b>: <span class="stats-pill">${losses}</span></div>
+        <div style="margin-top:6px"><b>성공률</b>: <span class="stats-pill">${formatNum(winRate,1)}%</span> · <b>누적손익</b>: <span class="stats-pill">${formatNum(pnl,2)}%</span> · <b>MDD</b>: <span class="stats-pill">${formatNum(mdd,1)}%</span></div>
+        <div style="margin-top:6px"><b>평균손익</b>: <span class="stats-pill">${formatNum(avgRet,3)}%</span> · <b>평균이익</b>: <span class="stats-pill">${formatNum(avgWin,3)}%</span> · <b>평균손실</b>: <span class="stats-pill">${formatNum(avgLoss,3)}%</span></div>
+        <div style="margin-top:8px" class="muted">※ 이 값은 “추적 종료( TP/SL/TIME/STOP )”된 결과만 누적됩니다.</div>
+      `;
+    }
+
+    // group by symbol
+    const bySym = groupTrades(trades, t => t.symbol);
+    const byTf  = groupTrades(trades, t => (t.tf||'').toUpperCase());
+    renderStatsTable('statsBySymbol', bySym, '코인');
+    renderStatsTable('statsByTf', byTf, 'TF');
+
+    // history table
+    renderHistoryTable('statsHistory', trades);
+  }
+
+  function groupTrades(trades, keyFn){
+    const m = new Map();
+    for(const t of trades){
+      const k = keyFn(t) || '-';
+      if(!m.has(k)) m.set(k, []);
+      m.get(k).push(t);
+    }
+    const rows = [];
+    for(const [k, arr] of m.entries()){
+      const total = arr.length;
+      const wins = arr.filter(x=>x.retPct>0).length;
+      const winRate = total ? wins/total*100 : 0;
+      const avgRet = total ? arr.reduce((a,x)=>a+x.retPct,0)/total : 0;
+      let eq=1.0, peak=1.0, mdd=0;
+      for(const x of arr){
+        eq *= (1 + (x.retPct/100));
+        if(eq>peak) peak=eq;
+        const dd=(peak-eq)/peak*100;
+        if(dd>mdd) mdd=dd;
+      }
+      const pnl = (eq-1)*100;
+      rows.push({ key:k, total, winRate, pnl, avgRet, mdd });
+    }
+    // sort: more trades first, then winRate
+    rows.sort((a,b)=> (b.total-a.total) || (b.winRate-a.winRate));
+    return rows;
+  }
+
+  function renderStatsTable(containerId, rows, keyLabel){
+    const el = document.getElementById(containerId);
+    if(!el) return;
+    if(!rows.length){
+      el.innerHTML = '<div class="empty">데이터 없음</div>';
+      return;
+    }
+    el.innerHTML = `
+      <table class="stats-table">
+        <thead>
+          <tr>
+            <th>${escapeHtml(keyLabel)}</th>
+            <th>횟수</th>
+            <th>성공률</th>
+            <th>누적손익</th>
+            <th>평균손익</th>
+            <th>MDD</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td><span class="stats-pill">${escapeHtml(String(r.key))}</span></td>
+              <td>${r.total}</td>
+              <td>${formatNum(r.winRate,1)}%</td>
+              <td>${formatNum(r.pnl,2)}%</td>
+              <td>${formatNum(r.avgRet,3)}%</td>
+              <td>${formatNum(r.mdd,1)}%</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function renderHistoryTable(containerId, trades){
+    const el = document.getElementById(containerId);
+    if(!el) return;
+    if(!trades.length){
+      el.innerHTML = '<div class="empty">아직 종료된 결과가 없습니다.</div>';
+      return;
+    }
+    const rows = trades.slice(-2000).slice().reverse();
+    el.innerHTML = `
+      <table class="stats-table">
+        <thead>
+          <tr>
+            <th>시간</th>
+            <th>코인</th>
+            <th>TF</th>
+            <th>방향</th>
+            <th>결과</th>
+            <th>수익률</th>
+            <th>비용</th>
+            <th>진입</th>
+            <th>종료</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(t => {
+            const cls = t.retPct>=0 ? 'oktxt' : 'dngtxt';
+            return `
+              <tr>
+                <td>${escapeHtml(t.endedAt ? new Date(t.endedAt).toLocaleString() : '-')}</td>
+                <td>${escapeHtml(t.symbol||'-')}</td>
+                <td>${escapeHtml(String((t.tf||'').toUpperCase()))}</td>
+                <td>${escapeHtml(t.dir||'-')}</td>
+                <td>${escapeHtml(t.outcome||'-')}</td>
+                <td class="${cls}">${formatNum(t.retPct,2)}%</td>
+                <td>${formatNum(t.costPct||0,3)}%</td>
+                <td>${formatPrice(t.entry||0)}</td>
+                <td>${formatPrice(t.exit||0)}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function copyStatsCSV(){
+    const trades = stats.trades || [];
+    const header = ['endedAt','symbol','tf','dir','outcome','entry','exit','retPct','costPct'];
+    const lines = [header.join(',')];
+    for(const t of trades.slice(-2000)){
+      const row = [
+        (t.endedAt || ''),
+        (t.symbol || ''),
+        (t.tf || ''),
+        (t.dir || ''),
+        (t.outcome || ''),
+        (t.entry ?? ''),
+        (t.exit ?? ''),
+        (t.retPct ?? ''),
+        (t.costPct ?? ''),
+      ];
+      lines.push(row.map(x => {
+        const s = String(x);
+        return (s.includes(',') || s.includes('"') || s.includes('\n')) ? '"' + s.replace(/"/g,'""') + '"' : s;
+      }).join(','));
+    }
+    const csv = lines.join('\n');
+    copyText(csv, 'CSV 복사');
   }
 
   function setText(id, txt){

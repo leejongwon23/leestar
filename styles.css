@@ -214,7 +214,8 @@ body{
 .track-desc{color: var(--muted); font-size:12px; margin-top:4px}
 .track-list{
   margin-top:10px;
-  max-height: 280px;
+  /* 다중 추적이 많아져도 항상 보이도록: 화면 비율 기반으로 자동 확장 */
+  max-height: min(42vh, 520px);
   overflow:auto;
   border:1px solid var(--line);
   border-radius: var(--r);
@@ -266,6 +267,7 @@ body{
   border-bottom:1px solid var(--line);
 }
 .overlay-title{font-weight:900}
+.overlay-sub{color: rgba(168,179,217,.85); font-size:12px; margin-top:4px; line-height:1.35}
 .overlay-actions{display:flex; gap:10px; align-items:center}
 .overlay-body{padding: 14px}
 .diag-grid{
@@ -483,6 +485,38 @@ body{
 .analysis-modal-card{width:min(1180px, 100%); height:min(86vh, 860px); display:flex; flex-direction:column;}
 .analysis-modal-body{padding:0;}
 .analysis-iframe{width:100%; height:100%; border:0; border-radius: 0 0 var(--r2) var(--r2); background: rgba(0,0,0,.20);}
+
+/* ===== Cumulative Stats modal ===== */
+.stats-modal-card{width:min(1180px, 100%); height:min(86vh, 920px); display:flex; flex-direction:column;}
+.stats-modal-body{overflow:auto;}
+.stats-summary{
+  border:1px solid var(--line);
+  border-radius: var(--r2);
+  background: rgba(255,255,255,.02);
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+.stats-split{display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top:12px;}
+.stats-box{
+  border:1px solid var(--line);
+  border-radius: var(--r2);
+  background: rgba(255,255,255,.02);
+  padding: 12px;
+}
+.stats-box-title{font-weight:900; margin-bottom:8px}
+.stats-table-wrap{overflow:auto;}
+.stats-table{width:100%; border-collapse:separate; border-spacing:0; font-size:12px;}
+.stats-table th, .stats-table td{padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,.08); white-space:nowrap;}
+.stats-table th{color: rgba(232,238,255,.78); text-align:left; position:sticky; top:0; background: rgba(15,23,48,.98);}
+.stats-table td{color: rgba(232,238,255,.88);}
+.stats-table tr:hover td{background: rgba(255,255,255,.02)}
+.stats-pill{display:inline-block; padding:4px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.10); background: rgba(0,0,0,.18); font-family:var(--mono)}
+
+@media (max-width: 900px){
+  .stats-split{grid-template-columns: 1fr;}
+  .stats-modal-card{height:min(88vh, 960px);}
+}
 
 .analysis-wrap{max-width:1100px;margin:0 auto;padding:14px 12px 24px;}
 .panel{border:1px solid var(--line);background:rgba(255,255,255,.02);border-radius:var(--r2);padding:12px;}
