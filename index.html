@@ -18,13 +18,13 @@
       <div class="dot"></div>
       <div>
         <div class="title">코인 분석·예측 웹앱</div>
-        <div class="subtitle">v3.3 · 브라우저 전용 · 통합 분석(새 창) · 다중 추적 · 자가진단 <span id="verInfo" class="verinfo"></span></div>
+        <div class="subtitle">v3.3 · 브라우저 전용 · 통합 분석(새 창) · 다중 추적 · 자가진단</div>
       </div>
     </div>
 
     <div class="topbar-right">
-      <button id="btnDiag" class="btn btn-ghost" title="오류/상태 보기">자가진단</button>
       <button id="btnOpenStats" class="btn btn-ghost" title="누적 통계 보기">누적 통계</button>
+      <button id="btnDiag" class="btn btn-ghost" title="오류/상태 보기">자가진단</button>
     </div>
   </header>
 
@@ -56,7 +56,7 @@
 
           <div class="tf">
             <div class="label">타임프레임</div>
-            <div class="tf-buttons" id="tfBadges" role="group" aria-label="타임프레임 선택">
+            <div class="tf-buttons" role="group" aria-label="타임프레임 선택">
               <button class="tf-btn is-active" data-tf="15m">15m</button>
               <button class="tf-btn" data-tf="1h">1h</button>
               <button class="tf-btn" data-tf="4h">4h</button>
@@ -168,10 +168,7 @@
   <div id="analysisModal" class="overlay hidden" role="dialog" aria-modal="true">
     <div class="overlay-card analysis-modal-card">
       <div class="overlay-head">
-        <div>
-          <div class="overlay-title">통합 분석 (모달)</div>
-          <div id="analysisMeta" class="overlay-sub">-</div>
-        </div>
+        <div class="overlay-title">통합 분석 (모달)</div>
         <div class="overlay-actions">
           <button id="btnReloadAnalysis" class="btn btn-ghost">새로고침</button>
           <button id="btnCloseAnalysis" class="btn btn-primary">닫기</button>
@@ -183,43 +180,48 @@
     </div>
   </div>
 
-  <!-- 누적 통계 모달 (성과/평가용) -->
+  
+  <!-- 누적 통계 모달 -->
   <div id="statsModal" class="overlay hidden" role="dialog" aria-modal="true">
     <div class="overlay-card stats-modal-card">
       <div class="overlay-head">
-        <div>
-          <div class="overlay-title">누적 통계</div>
-          <div class="overlay-sub" id="statsMeta">-</div>
-        </div>
+        <div class="overlay-title">누적 통계</div>
         <div class="overlay-actions">
-          <button id="btnExportStats" class="btn btn-ghost">CSV 복사</button>
-          <button id="btnResetStatsAll" class="btn btn-ghost">통계 초기화</button>
+          <button id="btnCopyStats" class="btn btn-ghost">CSV 복사</button>
+          <button id="btnResetStats" class="btn btn-ghost">통계 초기화</button>
           <button id="btnCloseStats" class="btn btn-primary">닫기</button>
         </div>
       </div>
       <div class="overlay-body stats-modal-body">
-        <div class="stats-summary" id="statsSummary">-</div>
+        <div class="stats-grid">
+          <section class="panel">
+            <div class="panel-title">전체 요약</div>
+            <div id="statsSummary" class="kv-grid"></div>
+          </section>
 
-        <div class="stats-split">
-          <div class="stats-box">
-            <div class="stats-box-title">코인별 요약</div>
-            <div id="statsBySymbol" class="stats-table-wrap"></div>
-          </div>
-          <div class="stats-box">
-            <div class="stats-box-title">구간(TF)별 요약</div>
-            <div id="statsByTf" class="stats-table-wrap"></div>
-          </div>
-        </div>
+          <section class="panel">
+            <div class="panel-title">코인별 요약</div>
+            <div id="statsBySymbol" class="table-wrap"></div>
+          </section>
 
-        <div class="stats-box" style="margin-top:12px">
-          <div class="stats-box-title">전체 히스토리 (최근 2000개)</div>
-          <div id="statsHistory" class="stats-table-wrap"></div>
+          <section class="panel">
+            <div class="panel-title">TF별 요약</div>
+            <div id="statsByTF" class="table-wrap"></div>
+          </section>
+
+          <section class="panel panel-full">
+            <div class="row between">
+              <div class="panel-title">전체 히스토리 (최근 2000개)</div>
+              <div class="muted">* retPct는 비용 차감 후(수수료/슬리피지/스프레드 반영)</div>
+            </div>
+            <div id="statsHistory" class="table-wrap"></div>
+          </section>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 자가진단 오버레이 -->
+<!-- 자가진단 오버레이 -->
   <div id="diagOverlay" class="overlay hidden" role="dialog" aria-modal="true">
     <div class="overlay-card">
       <div class="overlay-head">
@@ -263,6 +265,6 @@
     </div>
   </div>
 
-  <script src="./app.js?v=20260205_3"></script>
+  <script src="./app.js?v=20260205_2"></script>
 </body>
 </html>
