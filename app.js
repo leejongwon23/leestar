@@ -515,7 +515,39 @@ const $ = (sel) => document.querySelector(sel);
       handleScale: true,
     });
 
-    candleSeries = chart.addCandlestickSeries({
+    
+    // --- Lightweight Charts API compatibility (v4/v5) ---
+    const addCandlestick = (ch, opts) => {
+      if (ch && typeof ch.addCandlestickSeries === 'function') return ch.addCandlestickSeries(opts);
+      if (ch && typeof ch.addSeries === 'function') {
+        try {
+          if (window.LightweightCharts && window.LightweightCharts.CandlestickSeries) {
+            return ch.addSeries(window.LightweightCharts.CandlestickSeries, opts);
+          }
+        } catch (e) {}
+        try {
+          return ch.addSeries(Object.assign({ type: 'Candlestick' }, opts || {}));
+        } catch (e) {}
+      }
+      throw new Error('Chart series API missing: cannot create candlestick series');
+    };
+
+    const addHistogram = (ch, opts) => {
+      if (ch && typeof ch.addHistogramSeries === 'function') return ch.addHistogramSeries(opts);
+      if (ch && typeof ch.addSeries === 'function') {
+        try {
+          if (window.LightweightCharts && window.LightweightCharts.HistogramSeries) {
+            return ch.addSeries(window.LightweightCharts.HistogramSeries, opts);
+          }
+        } catch (e) {}
+        try {
+          return ch.addSeries(Object.assign({ type: 'Histogram' }, opts || {}));
+        } catch (e) {}
+      }
+      throw new Error('Chart series API missing: cannot create histogram series');
+    };
+
+    candleSeries = addCandlestick(chart, {
       upColor: 'rgba(85,215,153,.95)',
       downColor: 'rgba(255,107,122,.95)',
       borderVisible: false,
@@ -523,13 +555,12 @@ const $ = (sel) => document.querySelector(sel);
       wickDownColor: 'rgba(255,107,122,.95)',
     });
 
-    volumeSeries = chart.addHistogramSeries({
+    volumeSeries = addHistogram(chart, {
       priceFormat: { type: 'volume' },
       priceScaleId: '',
       scaleMargins: { top: 0.80, bottom: 0 },
     });
-
-    window.addEventListener('resize', () => {
+window.addEventListener('resize', () => {
       chart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
     });
 
