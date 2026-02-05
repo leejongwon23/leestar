@@ -114,6 +114,7 @@
   </div>
 
             <button id="btnStopAll" class="btn btn-ghost" disabled>전체 중지</button>
+            <button id="btnResetAllTop" class="btn btn-ghost">전체 초기화</button>
           </div>
         </div>
 
@@ -160,6 +161,23 @@
       </div>
     </section>
   </main>
+
+
+  <!-- 통합 분석 모달 (동일 브라우저 내) -->
+  <div id="analysisModal" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="overlay-card analysis-modal-card">
+      <div class="overlay-head">
+        <div class="overlay-title">통합 분석 (모달)</div>
+        <div class="overlay-actions">
+          <button id="btnReloadAnalysis" class="btn btn-ghost">새로고침</button>
+          <button id="btnCloseAnalysis" class="btn btn-primary">닫기</button>
+        </div>
+      </div>
+      <div class="overlay-body analysis-modal-body">
+        <iframe id="analysisFrame" title="통합 분석" class="analysis-iframe" src="about:blank"></iframe>
+      </div>
+    </div>
+  </div>
 
   <!-- 자가진단 오버레이 -->
   <div id="diagOverlay" class="overlay hidden" role="dialog" aria-modal="true">

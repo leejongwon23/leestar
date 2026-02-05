@@ -195,13 +195,37 @@ const $ = (sel) => document.querySelector(sel);
     });
 
     $('#btnAnalyze').addEventListener('click', async () => {
-      setLastAction('통합 분석(새 창) 클릭');
+      setLastAction('통합 분석(모달) 열기');
       try{
         await openIntegratedAnalysis();
       }catch(err){
         setDiagError('통합 분석 열기 실패', String(err && err.message ? err.message : err));
         showDiag();
       }
+    });
+
+    // analysis modal controls
+    document.getElementById('btnCloseAnalysis')?.addEventListener('click', () => {
+      setLastAction('통합 분석 닫기');
+      closeAnalysisModal();
+    });
+    document.getElementById('btnReloadAnalysis')?.addEventListener('click', () => {
+      setLastAction('통합 분석 새로고침');
+      openAnalysisModal(state.symbol);
+    });
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape'){
+        const m = document.getElementById('analysisModal');
+        if(m && !m.classList.contains('hidden')) closeAnalysisModal();
+      }
+    });
+
+    // quick reset all (top)
+    document.getElementById('btnResetAllTop')?.addEventListener('click', () => {
+      setLastAction('전체 초기화(상단)');
+      // reuse same logic as btnResetAll
+      try{ document.getElementById('btnResetAll')?.click(); }
+      catch(_){ }
     });
 
     const stopAll = $('#btnStopAll');
@@ -886,17 +910,31 @@ window.addEventListener('resize', () => {
   // -- Integrated analysis window (Step 3) ----------------
 async function openIntegratedAnalysis(){
   const symbol = state.symbol;
-  // Mobile-safe: open a real page (analysis.html) instead of document.write into about:blank
-  // open analysis page (prefer new tab, fallback to same tab if popup blocked)
-  const url = `analysis.html?symbol=${encodeURIComponent(symbol)}`;
-  const w = window.open(url, '_blank', 'noopener,noreferrer');
-  if (!w) {
-    // Popup blocked: fallback to same tab so the feature still works
-    setDiagError('팝업이 차단되어 새 창을 열 수 없습니다. 같은 탭으로 이동합니다.', 'Popup blocked');
-    showDiag();
-    window.location.href = url;
+  openAnalysisModal(symbol);
+}
+
+function openAnalysisModal(symbol){
+  const modal = document.getElementById('analysisModal');
+  const frame = document.getElementById('analysisFrame');
+  if(!modal || !frame){
+    // fallback: if modal DOM missing, go to analysis page
+    window.location.href = `analysis.html?symbol=${encodeURIComponent(symbol)}`;
     return;
   }
+  // cache-bust to avoid stale content
+  frame.src = `analysis.html?symbol=${encodeURIComponent(symbol)}&t=${Date.now()}`;
+  modal.classList.remove('hidden');
+  // close on backdrop click
+  modal.addEventListener('click', (e)=>{
+    if(e.target === modal) closeAnalysisModal();
+  }, { once:true });
+}
+
+function closeAnalysisModal(){
+  const modal = document.getElementById('analysisModal');
+  const frame = document.getElementById('analysisFrame');
+  if(modal) modal.classList.add('hidden');
+  if(frame) frame.src = 'about:blank';
 }
 
 // Entry for analysis.html
@@ -1079,7 +1117,8 @@ if(_dbg) _dbg.addEventListener('change', (e)=>{ state.diag.debug = !!e.target.ch
     btn.addEventListener('click', () => {
       try{
         const payload = JSON.parse(btn.getAttribute('data-track'));
-        w.opener?.postMessage({ type:'ADD_TRACK', payload }, '*');
+        const target = (w.parent && w.parent !== w) ? w.parent : w.opener;
+        target?.postMessage({ type:'ADD_TRACK', payload }, '*');
         btn.textContent = '추적에 추가됨 ✅';
         btn.disabled = true;
         btn.style.opacity = '0.75';
