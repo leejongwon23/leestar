@@ -1271,7 +1271,7 @@ async function analyzeOneTF(symbol, tf){
     const { tp, sl, tpPct, slPct } = calcTpSl(entry, atrNow, dir);
 
     // 7) backtest
-    const bt = backtestWFO(candles, pred.dir, tp, sl, atr, entry);
+    const bt = backtestWFO(candles, dir, tp, sl, atr, entry);
 
     // 8) 신뢰도 경고(강화)
     const warns = [];
