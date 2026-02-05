@@ -887,11 +887,14 @@ window.addEventListener('resize', () => {
 async function openIntegratedAnalysis(){
   const symbol = state.symbol;
   // Mobile-safe: open a real page (analysis.html) instead of document.write into about:blank
+  // open analysis page (prefer new tab, fallback to same tab if popup blocked)
   const url = `analysis.html?symbol=${encodeURIComponent(symbol)}`;
   const w = window.open(url, '_blank', 'noopener,noreferrer');
-  if(!w){
-    setDiagError('팝업이 차단되었습니다. 브라우저에서 팝업 허용 후 다시 시도해 주세요.', 'Popup blocked');
+  if (!w) {
+    // Popup blocked: fallback to same tab so the feature still works
+    setDiagError('팝업이 차단되어 새 창을 열 수 없습니다. 같은 탭으로 이동합니다.', 'Popup blocked');
     showDiag();
+    window.location.href = url;
     return;
   }
 }
@@ -1119,7 +1122,9 @@ if(_dbg) _dbg.addEventListener('change', (e)=>{ state.diag.debug = !!e.target.ch
     // EASY: High / Medium / Low
     let score = 0;
     // Step 10: WFO recent fold bonus/penalty
-    const wfoBoost = (r.bt && r.bt.folds && r.bt.folds.length) ? (r.bt.folds[r.bt.folds.length-1].avgRet||0) : 0;
+    const wfoBoost = (bt && bt.folds && bt.folds.length) ? (bt.folds[bt.folds.length-1].avgRet||0) : 0;
+    if(wfoBoost > 0) score += 1;
+    else if(wfoBoost < 0) score -= 1;
     if(bt.n >= BT_MIN_SAMPLES) score += 2; else score -= 2;
     if(conf >= CONF_LOW_TH) score += 1; else score -= 1;
     if(atrPct <= ATRPCT_HIGH_TH) score += 1; else score -= 1;
