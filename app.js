@@ -567,6 +567,9 @@ window.addEventListener('resize', () => {
     // Step 10: enable drawings
     initDrawing();
 
+    // clear any previous chart error after successful init
+    clearDiagError();
+
   }
 
   function setChartData(bars, vols){
@@ -2224,7 +2227,18 @@ addTrackPlaceholder = function(payload){
 
   renderTrackList();
   ensureTrackLoop();
-};
+}
+
+function clearDiagError(){
+  try{
+    state.diag = state.diag || {};
+    state.diag.error = '';
+    state.diag.errorDetail = '';
+    updateDiagUI();
+    saveState();
+  }catch(e){}
+}
+;
 
 function ensureTrackLoop(){
   if(trackTimer) return;
